@@ -81,6 +81,41 @@ public:
     }
   }
 
+  ///////////////////////////////////////////////////////////////////////////////
+  void smearAlt(GaugeField& u_smr, const GaugeField& U, const int orthog)const{
+    GridBase *grid = U.Grid();
+    GaugeLinkField Cup(grid), tmp_stpl(grid);
+    WilsonLoops<Gimpl> WL;
+    u_smr = Zero();
+
+	Real dims = Nd-1;
+	if( orthog < Nd ) dims -= 1;
+
+    std::cout <<GridLogMessage << "smearing dim= "<<dims<<std::endl;
+      
+    for(int mu=0; mu<Nd; ++mu){
+		if (mu != orthog)
+		{
+          Cup = Zero();
+          for(int nu=0; nu<Nd; ++nu){
+            if ((nu != mu) && nu != orthog){
+	          // get the staple in direction mu, nu
+	          WL.Staple(tmp_stpl, U, mu, nu);  //nb staple conventions of IroIro and Grid differ by a dagger
+              Cup += tmp_stpl*rho[mu + Nd * nu]*(1.0 / (2.0 * dims));
+              //Cup += tmp_stpl*rho[mu + Nd * nu];
+              //Cup += tmp_stpl;
+	        }
+         }
+         // save the Cup link-field on the u_smr gauge-field
+         pokeLorentz(u_smr, adj(Cup), mu); // u_smr[mu] = Cup^dag   see conventions for Staple
+         }
+		else
+		{
+			pokeLorentz(u_smr, peekLorentz(U, mu), mu);
+		}
+    }
+  }
+
   ////////////////////////////////////////////////////////////////////////////////
   void derivative(GaugeField& SigmaTerm,
 		  const GaugeField& iLambda,
