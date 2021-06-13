@@ -62,11 +62,11 @@ feenableexcept (unsigned int excepts)
   int iold_excepts;  // previous masks
 
   if ( fegetenv (&fenv) ) return -1;
-  old_excepts = fenv.__control & FE_ALL_EXCEPT;
+  //old_excepts = fenv.__control & FE_ALL_EXCEPT;
 
   // unmask
-  fenv.__control &= ~new_excepts;
-  fenv.__mxcsr   &= ~(new_excepts << 7);
+  //fenv.__control &= ~new_excepts;
+  //fenv.__mxcsr   &= ~(new_excepts << 7);
 
   iold_excepts  = (int) old_excepts;
   return ( fesetenv (&fenv) ? -1 : iold_excepts );

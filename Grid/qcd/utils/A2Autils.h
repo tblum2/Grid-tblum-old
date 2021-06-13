@@ -111,6 +111,14 @@ public:
 			const FermionField *vd,
 			int orthogdim);
 #endif
+template <typename TensorType> // output: rank 5 tensor, e.g. Eigen::Tensor<ComplexD, 5>
+static void StagMesonField(TensorType &mat,
+                    const FermionField *lhs_wi,
+                    const FermionField *rhs_vj,
+                    std::vector<Gamma::Algebra> gammas,
+                    const std::vector<ComplexField > &mom,
+                    int orthogdim, double *t_kernel, double *t_gsum = nullptr);
+    
 private:
   inline static void OuterProductWWVV(PropagatorField &WWVV,
                                const vobj &lhs,
@@ -1474,7 +1482,223 @@ void A2Autils<FImpl>::DeltaFeq2(int dt_min,int dt_max,
   LOG(Message) << "Computing A2A DeltaF=2 graph t_outer    " << t_outer    /million << " s "<< std::endl;
   LOG(Message) << "Computing A2A DeltaF=2 graph t_contr    " << t_contr    /million << " s "<< std::endl;
 }
-#endif 
+#endif
+
+// local, taste-nonsignlet staggered mesons
+// only the goldstone pion and gamma_{x,y,z} implemented for now.
+template <class FImpl>
+template <typename TensorType>
+void A2Autils<FImpl>::StagMesonField(TensorType &mat,
+                                     const FermionField *lhs_wi,
+                                     const FermionField *rhs_vj,
+                                     std::vector<Gamma::Algebra> gammas,
+                                     const std::vector<ComplexField > &mom,
+                                     int orthogdim, double *t_kernel, double *t_gsum)
+{
+    typedef typename FImpl::SiteSpinor vobj;
+    
+    typedef typename vobj::scalar_object sobj;
+    typedef typename vobj::scalar_type scalar_type;
+    typedef typename vobj::vector_type vector_type;
+    
+    typedef iSinglet<vector_type> Singlet_v;
+    typedef iSinglet<scalar_type> Singlet_s;
+    
+    int Lblock = mat.dimension(3);
+    int Rblock = mat.dimension(4);
+    
+    //GridBase *grid = lhs_wi[0]._grid;
+    GridBase *grid = lhs_wi[0].Grid();
+
+    const int    Nd = grid->_ndimension;
+    const int Nsimd = grid->Nsimd();
+    
+    int Nt     = grid->GlobalDimensions()[orthogdim];
+    int Ngamma = gammas.size();
+    int Nmom   = mom.size();
+    
+    int fd=grid->_fdimensions[orthogdim];
+    int ld=grid->_ldimensions[orthogdim];
+    int rd=grid->_rdimensions[orthogdim];
+    
+    // will locally sum vectors first
+    // sum across these down to scalars
+    // splitting the SIMD
+    int MFrvol = rd*Lblock*Rblock*Nmom;
+    int MFlvol = ld*Lblock*Rblock*Nmom;
+    
+    Vector<Singlet_v > lvSum(MFrvol);
+    // thread_for(r, MFrvol,{
+    //   lvSum[r] = Zero();
+    // });
+    //parallel_for (int r = 0; r < MFrvol; r++){
+    //    lvSum[r] = zero;
+    //}
+    
+    Vector<Singlet_s > lsSum(MFlvol);
+    // thread_for(r, MFlvol,{
+    //   lsSum[r]=scalar_type(0.0);
+    // });
+    //parallel_for (int r = 0; r < MFlvol; r++){
+    //    lsSum[r]=scalar_type(0.0);
+    //}
+    
+    int e1=    grid->_slice_nblock[orthogdim];
+    int e2=    grid->_slice_block [orthogdim];
+    int stride=grid->_slice_stride[orthogdim];
+    
+    // potentially wasting cores here if local time extent too small
+    if (t_kernel) *t_kernel = -usecond();
+    
+    // based on phases in Grid/qcd/action/fermion/FermionOperatorImpl.h
+    // Pretty cute implementation, if I may say so myself (!) (-PAB)
+    // Staggered Phases for local, taste non-singlet meson operators.
+    // See Degrand and Detar, Ch 11.2
+    
+    //Lattice<iScalar<vInteger> > coor(grid);
+    Lattice<iScalar<vInteger> > x(grid); LatticeCoordinate(x,0);
+    Lattice<iScalar<vInteger> > y(grid); LatticeCoordinate(y,1);
+    Lattice<iScalar<vInteger> > z(grid); LatticeCoordinate(z,2);
+    Lattice<iScalar<vInteger> > t(grid); LatticeCoordinate(t,3);
+    
+    Lattice<iScalar<vInteger> > lin_x(grid); lin_x=y+z+t;
+    Lattice<iScalar<vInteger> > lin_y(grid); lin_y=x+z+t;
+    Lattice<iScalar<vInteger> > lin_z(grid); lin_z=x+y+t;
+    Lattice<iScalar<vInteger> > lin_5(grid); lin_5=x+y+z+t;
+
+    for (int mu = 0; mu < Ngamma; mu++) {
+        // Re-initialize working variables before starting on a new gamma
+        thread_for(r, MFrvol,{
+          lvSum[r] = Zero();
+        });
+        thread_for(r, MFlvol,{
+          lsSum[r]=scalar_type(0.0);
+        });
+        ComplexField stagphase(grid);   stagphase=1.0;
+        
+        if ( gammas[mu] == Gamma::Algebra::Gamma5 ) stagphase = where( mod(lin_5,2)==(Integer)0, stagphase,-stagphase);
+        else if ( gammas[mu] == Gamma::Algebra::GammaX ) stagphase = where( mod(lin_x,2)==(Integer)0, stagphase,-stagphase);
+        else if ( gammas[mu] == Gamma::Algebra::GammaY ) stagphase = where( mod(lin_y,2)==(Integer)0, stagphase,-stagphase);
+        else if ( gammas[mu] == Gamma::Algebra::GammaZ ) stagphase = where( mod(lin_z,2)==(Integer)0, stagphase,-stagphase);
+        else {
+            std::cout << gammas[mu] << " not implemented for staggered fermion meson field" << std::endl;
+            assert(0);
+        }
+        thread_for(r, rd,{
+            
+            int so=r*grid->_ostride[orthogdim]; // base offset for start of plane
+            
+            for(int n=0;n<e1;n++){
+                for(int b=0;b<e2;b++){
+                    
+                    int ss= so+n*stride+b;
+                    for(int i=0;i<Lblock;i++){
+                        
+                        //auto left = conjugate(lhs_wi[i]._odata[ss]);
+                        auto wi_v  = lhs_wi[i].View(CpuRead);
+                        auto left = conjugate(wi_v[ss]);
+
+                        for(int j=0;j<Rblock;j++){
+                            
+                            Singlet_v vv;
+                            //auto right = rhs_vj[j]._odata[ss];
+                            auto vj_v = rhs_vj[j].View(CpuRead);
+                            auto right = vj_v[ss];
+ 
+                            vv()()() = left()()(0) * right()()(0)
+                                     + left()()(1) * right()()(1)
+                                     + left()()(2) * right()()(2);
+                            
+                            // After getting the sitewise product do the mom phase loop
+                            int base = Nmom*i+Nmom*Lblock*j+Nmom*Lblock*Rblock*r;
+                            for ( int m=0;m<Nmom;m++){
+                                int idx = m+base;
+                                //auto phase = mom[m]._odata[ss] * stagphase._odata[ss];
+                                auto mom_v = mom[m].View(CpuRead);
+                                auto stagphase_v = stagphase.View(CpuRead);
+                                auto phase = mom_v[ss] * stagphase_v[ss];
+                                mac(&lvSum[idx],&vv,&phase);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    
+    
+        // Sum across simd lanes in the plane, breaking out orthog dir.
+        thread_for(rt, rd,{
+        //parallel_for(int rt=0;rt<rd;rt++){
+            Coordinate icoor(Nd);
+            //std::vector<int> icoor(Nd);
+            //std::vector<Singlet_s> extracted(Nsimd);
+            ExtractBuffer<Singlet_s> extracted(Nsimd);
+            
+            for(int i=0;i<Lblock;i++){
+                for(int j=0;j<Rblock;j++){
+                    for(int m=0;m<Nmom;m++){
+                        
+                        int ij_rdx = m+Nmom*i+Nmom*Lblock*j+Nmom*Lblock*Rblock*rt;
+                        
+                        extract(lvSum[ij_rdx],extracted);
+                        
+                        for(int idx=0;idx<Nsimd;idx++){
+                            
+                            grid->iCoorFromIindex(icoor,idx);
+                            
+                            int ldx    = rt+icoor[orthogdim]*rd;
+                            
+                            int ij_ldx = m+Nmom*i+Nmom*Lblock*j+Nmom*Lblock*Rblock*ldx;
+                            
+                            lsSum[ij_ldx]=lsSum[ij_ldx]+extracted[idx];
+                            
+                        }
+                    }}}
+        });
+        if (t_kernel) *t_kernel += usecond();
+        assert(mat.dimension(0) == Nmom);
+        assert(mat.dimension(1) == Ngamma);
+        assert(mat.dimension(2) == Nt);
+        
+        // ld loop and local only??
+        int pd = grid->_processors[orthogdim];
+        int pc = grid->_processor_coor[orthogdim];
+        thread_for_collapse(2,lt,ld,{
+            
+            for(int pt=0;pt<pd;pt++){
+                int t = lt + pt*ld;
+                if (pt == pc){
+                    for(int i=0;i<Lblock;i++){
+                        for(int j=0;j<Rblock;j++){
+                            for(int m=0;m<Nmom;m++){
+                                int ij_dx = m+Nmom*i + Nmom*Lblock * j + Nmom*Lblock * Rblock * lt;
+                                mat(m,mu,t,i,j) = lsSum[ij_dx];
+                            }
+                        }
+                    }
+                } else {
+                    const scalar_type zz(0.0);
+                    for(int i=0;i<Lblock;i++){
+                        for(int j=0;j<Rblock;j++){
+                            for(int m=0;m<Nmom;m++){
+                                mat(m,mu,t,i,j) =zz;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } // end loop on gamma
+    ////////////////////////////////////////////////////////////////////
+    // This global sum is taking as much as 50% of time on 16 nodes
+    // Vector size is 7 x 16 x 32 x 16 x 16 x sizeof(complex) = 2MB - 60MB depending on volume
+    // Healthy size that should suffice
+    ////////////////////////////////////////////////////////////////////
+    if (t_gsum) *t_gsum = -usecond();
+    grid->GlobalSumVector(&mat(0,0,0,0,0),Nmom*Ngamma*Nt*Lblock*Rblock);
+    if (t_gsum) *t_gsum += usecond();
+}
+
 
 NAMESPACE_END(Grid);
 
