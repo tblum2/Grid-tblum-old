@@ -333,7 +333,7 @@ void StaggeredKernels<Impl>::DhopNaive(StencilImpl &st, LebesgueOrder &lo,
     if (Opt == OptGeneric    ) { KERNEL_CALL(DhopSiteGeneric,0); return;}
 #ifndef GRID_CUDA
     if (Opt == OptHandUnroll ) { KERNEL_CALL(DhopSiteHand,0);    return;}
-    if (Opt == OptInlineAsm  ) {  ASM_CALL_NAIVE(DhopSiteAsm);     return;}
+    if (Opt == OptInlineAsm  ) { ASM_CALL_NAIVE(DhopSiteAsm);    return;}
 #endif
   } else if( interior ) {
     if (Opt == OptGeneric    ) { KERNEL_CALL(DhopSiteGenericInt,0); return;}
@@ -346,6 +346,7 @@ void StaggeredKernels<Impl>::DhopNaive(StencilImpl &st, LebesgueOrder &lo,
     if (Opt == OptHandUnroll ) { KERNEL_CALL(DhopSiteHandExt,0);    return;}
 #endif
   }
+  assert(0 && "Naive Staggered Kernel optimisation case not covered ");
 }
 
 
