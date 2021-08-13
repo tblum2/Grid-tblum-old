@@ -41,6 +41,7 @@ void Grid_quiesce_nodes(void);
 void Grid_unquiesce_nodes(void);
 
 const Coordinate  GridDefaultSimd(int dims,int nsimd);
+const Coordinate  MyDefaultSimd(int dims,int nsimd);
 const Coordinate &GridDefaultLatt(void);
 const Coordinate &GridDefaultMpi(void);
 const int        &GridThreads(void)  ;

@@ -104,6 +104,21 @@ const Coordinate GridDefaultSimd(int dims,int nsimd)
   assert(nn==1);
   return layout;
 }
+const Coordinate MyDefaultSimd(int dims,int nsimd)
+{
+  Coordinate layout(dims);
+  int nn=nsimd;
+  for(int d=0;d<dims;d++){
+    if ( nn>=2) {
+      layout[d]=2;
+      nn/=2;
+    } else {
+      layout[d]=1;
+    }
+  }
+  assert(nn==1);
+  return layout;
+}
 
 ////////////////////////////////////////////////////////////
 // Command line parsing assist for stock controls
