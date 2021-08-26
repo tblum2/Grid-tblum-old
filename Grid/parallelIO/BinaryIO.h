@@ -28,7 +28,12 @@
     /*  END LEGAL */
 #pragma once
 
-#if defined(GRID_COMMS_MPI) || defined(GRID_COMMS_MPI3) || defined(GRID_COMMS_MPIT) 
+#define USE_QLATTICE
+#if defined(USE_QLATTICE)
+#include <qlat/qlat.h>
+#endif
+
+#if defined(GRID_COMMS_MPI) || defined(GRID_COMMS_MPI3) || defined(GRID_COMMS_MPIT)
 #define USE_MPI_IO
 #else
 #undef  USE_MPI_IO
@@ -359,6 +364,51 @@ class BinaryIO {
       timer.Start();
 
       if ( (control & BINARYIO_LEXICOGRAPHIC) && (nrank > 1) ) {
+#if defined(USE_QLATTICE)
+          if(file.find("shuffle")!=std::string::npos){
+              std::cout<< GridLogMessage<<"IOobject: Shuffle read "<< file<< std::endl;
+              // Each mpi process reads a chunk (usually a time slice)
+               
+              int flen = file.size();
+              int pos=-1;
+              for(int i=flen-1;i>=0;i--){
+                  if(file[i]=='/'){
+                      pos=i+1;
+                      break;
+                  }
+              }
+              assert(pos>0);
+              std::string filename=file.substr(0,pos)+"evecs";
+              static bool qlatbegin = false;
+              qlat::Coordinate qcoor;
+              qlat::Coordinate qsizes;
+              qsizes[0]=psizes[0];
+              qsizes[1]=psizes[1];
+              qsizes[2]=psizes[2];
+              qsizes[3]=psizes[3];
+              qcoor[0]=pcoor[0];
+              qcoor[1]=pcoor[1];
+              qcoor[2]=pcoor[2];
+              qcoor[3]=pcoor[3];
+              if(!qlatbegin){
+                  qlatbegin=true;
+                  qlat::begin(qlat::index_from_coordinate(qcoor,qsizes),qsizes);
+              }
+              std::cout<< GridLogMessage<<"IOobject: Shuffle write "<< filename << std::endl;
+              qlat::Coordinate grid_layout;
+              grid_layout[0]=gLattice[0];
+              grid_layout[1]=gLattice[1];
+              grid_layout[2]=gLattice[2];
+              grid_layout[3]=gLattice[3];
+              qlat::Geometry geo;
+              geo.init(grid_layout, 1);
+              qlat::Field<Complex> f;
+              f.init(geo, 3);// 3 colors
+              qlat::read_field(f,filename,file);
+              qlat::assign(qlat::Vector<Complex>((Complex*)iodata.data(),
+                                                 3*iodata.size()),qlat::get_data(f));
+          }else{
+#endif
 #ifdef USE_MPI_IO
 	std::cout<< GridLogMessage<<"IOobject: MPI read I/O "<< file<< std::endl;
 	ierr=MPI_File_open(grid->communicator,(char *) file.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);    assert(ierr==0);
@@ -369,6 +419,9 @@ class BinaryIO {
 	MPI_Type_free(&localArray);
 #else 
 	assert(0);
+#endif
+#if defined(USE_QLATTICE)
+          }
 #endif
       } else {
 	std::cout << GridLogMessage <<"IOobject: C++ read I/O " << file << " : "
@@ -415,7 +468,56 @@ class BinaryIO {
       grid->Barrier();
 
       timer.Start();
+#if defined(USE_QLATTICE)
       if ( (control & BINARYIO_LEXICOGRAPHIC) && (nrank > 1) ) {
+          // use Luchang's shuffled field writer if requested
+          if(file.find("shuffle")!=std::string::npos){
+              int flen = file.size();
+              int pos=-1;
+              for(int i=flen-1;i>=0;i--){
+                  if(file[i]=='/'){
+                      pos=i+1;
+                      break;
+                  }
+              }
+              assert(pos>0);
+              std::string filename=file.substr(0,pos)+"evecs";
+              static bool qlatbegin = false;
+              qlat::Coordinate qcoor;
+              qlat::Coordinate qsizes;
+              qsizes[0]=psizes[0];
+              qsizes[1]=psizes[1];
+              qsizes[2]=psizes[2];
+              qsizes[3]=psizes[3];
+              qcoor[0]=pcoor[0];
+              qcoor[1]=pcoor[1];
+              qcoor[2]=pcoor[2];
+              qcoor[3]=pcoor[3];
+              if(!qlatbegin){
+                  qlatbegin=true;
+                  qlat::begin(qlat::index_from_coordinate(qcoor,qsizes),qsizes);
+              }
+              std::cout<< GridLogMessage<<"IOobject: Shuffle write "<< filename << std::endl;
+              qlat::Coordinate grid_layout;
+              grid_layout[0]=gLattice[0];
+              grid_layout[1]=gLattice[1];
+              grid_layout[2]=gLattice[2];
+              grid_layout[3]=gLattice[3];
+              qlat::Geometry geo;
+              geo.init(grid_layout, 1);
+              qlat::Field<Complex> f;
+              f.init(geo, 3);// 3 colors
+              qlat::Coordinate new_layout;
+              // new_layout: each mpi process writes a time slice
+              new_layout[0]=1;
+              new_layout[1]=1;
+              new_layout[2]=1;
+              new_layout[3]=nrank;
+              qlat::ShuffledFieldsWriter sfw(filename, new_layout, true);
+              qlat::assign(qlat::get_data(f), qlat::Vector<Complex>((Complex*)iodata.data(),3*iodata.size()));
+              qlat::write(sfw,file,f);
+          }else{
+#endif
 #ifdef USE_MPI_IO
         std::cout << GridLogMessage <<"IOobject: MPI write I/O " << file << std::endl;
         ierr = MPI_File_open(grid->communicator, (char *)file.c_str(), MPI_MODE_RDWR | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
@@ -452,6 +554,9 @@ class BinaryIO {
         MPI_Type_free(&localArray);
 #else 
 	assert(0);
+#endif
+#if defined(USE_QLATTICE)
+          }
 #endif
       } else { 
 

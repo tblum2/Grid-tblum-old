@@ -466,7 +466,9 @@ class GridLimeWriter : public BinaryIO
     if ( boss_node ) {
       fseek(File,0,SEEK_END);             
       uint64_t offset2 = ftello(File);     //    std::cout << " now at offset "<<offset2 << std::endl;
-      assert( (offset2-offset1) == PayloadSize);
+        if(filename.find("shuffle")==std::string::npos){
+            assert( (offset2-offset1) == PayloadSize);
+        }
     }
 
     /////////////////////////////////////////////////////////////
