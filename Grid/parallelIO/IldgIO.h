@@ -436,8 +436,13 @@ class GridLimeWriter : public BinaryIO
     uint32_t nersc_csum,scidac_csuma,scidac_csumb;
     uint64_t PayloadSize = sizeof(sobj) * grid->_gsites;
     if ( boss_node ) {
-      createLimeRecordHeader(record_name, 0, 0, PayloadSize);
-      fflush(File);
+        if(filename.find("shuffle")==std::string::npos){
+            createLimeRecordHeader(record_name, 0, 0, PayloadSize);
+            fflush(File);
+        }else{//Luchang's shuffled field writer
+            createLimeRecordHeader(record_name, 0, 0, 0);
+            fflush(File);
+        }
     }
     
     //    std::cout << "W sizeof(sobj)"      <<sizeof(sobj)<<std::endl;

@@ -468,8 +468,8 @@ class BinaryIO {
       grid->Barrier();
 
       timer.Start();
-#if defined(USE_QLATTICE)
       if ( (control & BINARYIO_LEXICOGRAPHIC) && (nrank > 1) ) {
+#if defined(USE_QLATTICE)
           // use Luchang's shuffled field writer if requested
           if(file.find("shuffle")!=std::string::npos){
               int flen = file.size();
