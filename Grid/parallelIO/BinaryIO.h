@@ -394,7 +394,7 @@ class BinaryIO {
                   qlatbegin=true;
                   qlat::begin(qlat::index_from_coordinate(qcoor,qsizes),qsizes);
               }
-              std::cout<< GridLogMessage<<"IOobject: Shuffle write "<< filename << std::endl;
+              std::cout<< GridLogMessage<<"IOobject: Shuffle read "<< filename << std::endl;
               qlat::Coordinate grid_layout;
               grid_layout[0]=gLattice[0];
               grid_layout[1]=gLattice[1];

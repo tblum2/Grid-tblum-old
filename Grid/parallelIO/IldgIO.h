@@ -231,9 +231,11 @@ class GridLimeReader : public BinaryIO {
 	//	std::cout << "R Gsites " <<field.Grid()->_gsites<<std::endl;
 	//	std::cout << "R Payload expected " <<PayloadSize<<std::endl;
 	//	std::cout << "R file size " <<file_bytes <<std::endl;
-
-	assert(PayloadSize == file_bytes);// Must match or user error
-
+    // file_bytes = '0' for shuffled read
+    if(filename.find("shuffle")==std::string::npos){
+        assert(PayloadSize == file_bytes);// Must match or user error
+    }
+          
 	uint64_t offset= ftello(File);
 	//	std::cout << " ReadLatticeObject from offset "<<offset << std::endl;
 	BinarySimpleMunger<sobj,sobj> munge;
