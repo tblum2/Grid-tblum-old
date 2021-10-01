@@ -28,7 +28,7 @@
     /*  END LEGAL */
 #pragma once
 
-#define USE_QLATTICE
+//#define USE_QLATTICE
 #if defined(USE_QLATTICE)
 #include <qlat/qlat.h>
 #endif
