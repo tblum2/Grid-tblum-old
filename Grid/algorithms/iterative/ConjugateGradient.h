@@ -194,7 +194,8 @@ public:
 
     std::cout << GridLogMessage << "ConjugateGradient did NOT converge "<<k<<" / "<< MaxIterations<< std::endl;
 
-    if (ErrorOnNoConverge) assert(0);
+    // for sloppy solves, don't abort
+    //if (ErrorOnNoConverge) assert(0);
     IterationsToComplete = k;
 
   }
