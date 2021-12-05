@@ -128,6 +128,17 @@ static void StagMesonFieldCC(TensorType &mat,
                              const std::vector<ComplexField > &sign,
                              int orthogdim, double *t_kernel = nullptr,
                              double *t_gsum = nullptr);
+// MCA - added this for nucleon fields to make WWW and VVV fields
+template <typename TensorType> // output: rank 6 tensor, e.g. Eigen::Tensor<ComplexD, 6>
+static void NucleonField(TensorType &mat,
+                         const FermionField *q1,
+                         const FermionField *q2,
+                         const FermionField *q3,
+                         std::vector<Gamma::Algebra> gammas,
+                         const std::vector<ComplexField > &mom,
+                         int orthogdim,
+                         double *t_kernel = nullptr,
+                         double *t_gsum = nullptr);
     
 private:
   inline static void OuterProductWWVV(PropagatorField &WWVV,
@@ -1898,6 +1909,230 @@ void A2Autils<FImpl>::StagMesonFieldCC(TensorType &mat,
     grid->GlobalSumVector(&mat(0,0,0,0,0),Nt*Lblock*Rblock);
     if (t_gsum) *t_gsum += usecond();
 }
+
+// MCA - adding this for nucleon fields
+
+template <class FImpl>
+template <typename TensorType>
+void A2Autils<FImpl>::NucleonField(TensorType &mat,
+                 const FermionField *q1,
+                 const FermionField *q2,
+                 const FermionField *q3,
+                 std::vector<Gamma::Algebra> gammas,
+                 const std::vector<ComplexField > &mom,
+                 int orthogdim, double *t_kernel, double *t_gsum)
+{
+  typedef typename FImpl::SiteSpinor vobj;
+  
+  typedef typename vobj::scalar_object sobj;
+  typedef typename vobj::scalar_type scalar_type;
+  typedef typename vobj::vector_type vector_type;
+
+  typedef iSpinMatrix<vector_type> SpinMatrix_v;
+  typedef iSpinMatrix<scalar_type> SpinMatrix_s;
+  
+  typedef iColourMatrix<vector_type> ColourMatrix_v;
+  typedef iSpinVector<vector_type> SpinVector_v;
+  typedef iSpinVector<scalar_type> SpinVector_s;
+  
+  
+  
+  // MCA - need to adjust these?
+  int Lblock = mat.dimension(3);
+  int Rblock = mat.dimension(4);
+  int Q3block = mat.dimension(5);
+  
+  GridBase *grid = q1[0]._grid;
+
+  const int    Nd = grid->_ndimension;
+  const int Nsimd = grid->Nsimd();
+
+  int Nt     = grid->GlobalDimensions()[orthogdim];
+  //int Ngamma = gammas.size();
+  int Nmom   = mom.size();
+
+  // MCA - what are these?
+  int fd=grid->_fdimensions[orthogdim];
+  int ld=grid->_ldimensions[orthogdim];
+  int rd=grid->_rdimensions[orthogdim];
+
+  // will locally sum vectors first
+  // sum across these down to scalars
+  // splitting the SIMD
+  int MFrvol = rd*Lblock*Rblock*Q3block*Nmom;
+  int MFlvol = ld*Lblock*Rblock*Q3block*Nmom;
+
+    
+
+  Vector<SpinVector_v > lvSum(MFrvol);
+  parallel_for (int r = 0; r < MFrvol; r++){
+    lvSum[r] = zero;
+  }
+
+  Vector<SpinVector_s > lsSum(MFlvol);
+  parallel_for (int r = 0; r < MFlvol; r++){
+    lsSum[r]=scalar_type(0.0);
+  }
+
+  int e1=    grid->_slice_nblock[orthogdim];
+  int e2=    grid->_slice_block [orthogdim];
+  int stride=grid->_slice_stride[orthogdim];
+
+  // potentially wasting cores here if local time extent too small
+  if (t_kernel) *t_kernel = -usecond();
+  parallel_for(int r=0;r<rd;r++){
+
+    int so=r*grid->_ostride[orthogdim]; // base offset for start of plane
+
+    for(int n=0;n<e1;n++){
+      for(int b=0;b<e2;b++){
+
+    int ss= so+n*stride+b;
+
+    //
+    // MCA - Updated this for nucleon
+    //
+    for(int i=0;i<Lblock;i++){
+
+      //auto left = conjugate(q1[i]._odata[ss]);
+        auto left = q1[i]._odata[ss];
+
+      for(int j=0;j<Rblock;j++){
+        auto right = q2[j]._odata[ss];
+          
+        // MCA - do spinless quark pair here, q1*C*G5*q2
+        ColourMatrix_v cc;
+        for(int c1=0;c1<Nc;c1++){
+        for(int c2=0;c2<Nc;c2++){
+          cc()()(c1,c2) = left()(0)(c1) * right()(1)(c2)
+        -             left()(1)(c1) * right()(0)(c2)
+        +             left()(2)(c1) * right()(3)(c2)
+        -              left()(3)(c1) * right()(2)(c2);
+        }}
+
+        // MCA - colour contract colour matrix with third quark
+        for(int k=0; k<Q3block; k++){
+            auto freequark = q3[k]._odata[ss];
+            SpinVector_v vv;
+            
+            for(int s1=0;s1<Ns;s1++){
+                vv()(s1)() = cc()()(0,1) * freequark()(s1)(2)
+                            - cc()()(1,0) * freequark()(s1)(2)
+                            + cc()()(1,2) * freequark()(s1)(0)
+                            - cc()()(2,1) * freequark()(s1)(0)
+                            + cc()()(2,0) * freequark()(s1)(1)
+                            - cc()()(0,2) * freequark()(s1)(1);
+            }
+            
+        
+        // After getting the sitewise product do the mom phase loop
+        int base = Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*r;
+        for ( int m=0;m<Nmom;m++){
+          int idx = m+base;
+          auto phase = mom[m]._odata[ss];
+          mac(&lvSum[idx],&vv,&phase);
+        }
+    }
+      }
+    }
+      }
+    }
+  }
+
+
+
+  //
+  // MCA - Need to update this segment as well
+  //
+  // Sum across simd lanes in the plane, breaking out orthog dir.
+  parallel_for(int rt=0;rt<rd;rt++){
+
+    std::vector<int> icoor(Nd);
+    std::vector<SpinVector_s> extracted(Nsimd);
+
+    for(int i=0;i<Lblock;i++){
+    for(int j=0;j<Rblock;j++){
+    for(int k=0;k<Q3block;k++){
+    // MCA - added k loop here
+    for(int m=0;m<Nmom;m++){
+
+      int ijk_rdx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*rt;
+
+      extract(lvSum[ijk_rdx],extracted);
+
+      for(int idx=0;idx<Nsimd;idx++){
+
+    grid->iCoorFromIindex(icoor,idx);
+
+    int ldx    = rt+icoor[orthogdim]*rd;
+
+    int ijk_ldx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*ldx;
+
+    lsSum[ijk_ldx]=lsSum[ijk_ldx]+extracted[idx];
+
+      }
+    }}}}
+  }
+  if (t_kernel) *t_kernel += usecond();
+  assert(mat.dimension(0) == Nmom);
+  assert(mat.dimension(1) == Ns);
+  assert(mat.dimension(2) == Nt);
+
+
+
+  // ld loop and local only??
+  int pd = grid->_processors[orthogdim];
+  int pc = grid->_processor_coor[orthogdim];
+  parallel_for_nest2(int lt=0;lt<ld;lt++)
+  {
+    for(int pt=0;pt<pd;pt++){
+      int t = lt + pt*ld;
+      if (pt == pc){
+    for(int i=0;i<Lblock;i++){
+      for(int j=0;j<Rblock;j++){
+          for(int k=0;k<Q3block;k++){
+        for(int m=0;m<Nmom;m++){
+          int ijk_dx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*lt;
+          for(int mu=0;mu<Ns;mu++){
+        // this is a bit slow
+        mat(m,mu,t,i,j,k) = lsSum[ijk_dx]()(mu)();
+          }
+      }
+        }
+      }
+    }
+      } else {
+    const scalar_type zz(0.0);
+    for(int i=0;i<Lblock;i++){
+      for(int j=0;j<Rblock;j++){
+          for(int k=0;k<Q3block;k++){
+        for(int mu=0;mu<Ns;mu++){
+          for(int m=0;m<Nmom;m++){
+        mat(m,mu,t,i,j,k) =zz;
+          }
+        }
+      }
+    }
+    }
+      }
+    }
+  }
+
+
+
+  ////////////////////////////////////////////////////////////////////
+  // This global sum is taking as much as 50% of time on 16 nodes
+  // Vector size is 7 x 16 x 32 x 16 x 16 x sizeof(complex) = 2MB - 60MB depending on volume
+  // Healthy size that should suffice
+  ////////////////////////////////////////////////////////////////////
+  if (t_gsum) *t_gsum = -usecond();
+  grid->GlobalSumVector(&mat(0,0,0,0,0,0),Nmom*Ns*Nt*Lblock*Rblock*Q3block);
+  if (t_gsum) *t_gsum += usecond();
+
+    
+
+}
+
 
 NAMESPACE_END(Grid);
 
