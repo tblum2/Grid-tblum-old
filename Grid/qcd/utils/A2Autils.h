@@ -1965,12 +1965,14 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
     
 
   Vector<SpinVector_v > lvSum(MFrvol);
-  parallel_for (int r = 0; r < MFrvol; r++){
+  #parallel_for (int r = 0; r < MFrvol; r++){
+  thread_for(r, MFrvol,{
     lvSum[r] = zero;
   }
 
   Vector<SpinVector_s > lsSum(MFlvol);
-  parallel_for (int r = 0; r < MFlvol; r++){
+  thread_for(r, MFlvol,{
+      //parallel_for (int r = 0; r < MFlvol; r++){
     lsSum[r]=scalar_type(0.0);
   }
 
@@ -1980,8 +1982,8 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
 
   // potentially wasting cores here if local time extent too small
   if (t_kernel) *t_kernel = -usecond();
-  parallel_for(int r=0;r<rd;r++){
-
+  //parallel_for(int r=0;r<rd;r++){
+  thread_for(r, rd,{
     int so=r*grid->_ostride[orthogdim]; // base offset for start of plane
 
     for(int n=0;n<e1;n++){
@@ -2045,8 +2047,8 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   // MCA - Need to update this segment as well
   //
   // Sum across simd lanes in the plane, breaking out orthog dir.
-  parallel_for(int rt=0;rt<rd;rt++){
-
+  //parallel_for(int rt=0;rt<rd;rt++){
+  thread_for(rt, rd,{
     std::vector<int> icoor(Nd);
     std::vector<SpinVector_s> extracted(Nsimd);
 
@@ -2084,7 +2086,7 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   int pd = grid->_processors[orthogdim];
   int pc = grid->_processor_coor[orthogdim];
   parallel_for_nest2(int lt=0;lt<ld;lt++)
-  {
+    {
     for(int pt=0;pt<pd;pt++){
       int t = lt + pt*ld;
       if (pt == pc){
