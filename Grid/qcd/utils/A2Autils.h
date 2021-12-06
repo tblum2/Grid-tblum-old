@@ -1965,16 +1965,16 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
     
 
   Vector<SpinVector_v > lvSum(MFrvol);
-  #parallel_for (int r = 0; r < MFrvol; r++){
+  //parallel_for (int r = 0; r < MFrvol; r++){
   thread_for(r, MFrvol,{
     lvSum[r] = zero;
-  }
+  });
 
   Vector<SpinVector_s > lsSum(MFlvol);
   thread_for(r, MFlvol,{
       //parallel_for (int r = 0; r < MFlvol; r++){
     lsSum[r]=scalar_type(0.0);
-  }
+  });
 
   int e1=    grid->_slice_nblock[orthogdim];
   int e2=    grid->_slice_block [orthogdim];
@@ -1989,59 +1989,57 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
     for(int n=0;n<e1;n++){
       for(int b=0;b<e2;b++){
 
-    int ss= so+n*stride+b;
+          int ss= so+n*stride+b;
 
-    //
-    // MCA - Updated this for nucleon
-    //
-    for(int i=0;i<Lblock;i++){
+          //
+          // MCA - Updated this for nucleon
+          //
+          for(int i=0;i<Lblock;i++){
 
-      //auto left = conjugate(q1[i]._odata[ss]);
-        auto left = q1[i]._odata[ss];
+              //auto left = conjugate(q1[i]._odata[ss]);
+              auto left = q1[i]._odata[ss];
 
-      for(int j=0;j<Rblock;j++){
-        auto right = q2[j]._odata[ss];
+              for(int j=0;j<Rblock;j++){
+                  auto right = q2[j]._odata[ss];
           
-        // MCA - do spinless quark pair here, q1*C*G5*q2
-        ColourMatrix_v cc;
-        for(int c1=0;c1<Nc;c1++){
-        for(int c2=0;c2<Nc;c2++){
-          cc()()(c1,c2) = left()(0)(c1) * right()(1)(c2)
-        -             left()(1)(c1) * right()(0)(c2)
-        +             left()(2)(c1) * right()(3)(c2)
-        -              left()(3)(c1) * right()(2)(c2);
-        }}
+                  // MCA - do spinless quark pair here, q1*C*G5*q2
+                  ColourMatrix_v cc;
+                  for(int c1=0;c1<Nc;c1++){
+                      for(int c2=0;c2<Nc;c2++){
+                          cc()()(c1,c2) = left()(0)(c1) * right()(1)(c2)
+                                        - left()(1)(c1) * right()(0)(c2)
+                                        + left()(2)(c1) * right()(3)(c2)
+                                        - left()(3)(c1) * right()(2)(c2);
+                      }
+                  }
 
-        // MCA - colour contract colour matrix with third quark
-        for(int k=0; k<Q3block; k++){
-            auto freequark = q3[k]._odata[ss];
-            SpinVector_v vv;
+                  // MCA - colour contract colour matrix with third quark
+                  for(int k=0; k<Q3block; k++){
+                      auto freequark = q3[k]._odata[ss];
+                      SpinVector_v vv;
             
-            for(int s1=0;s1<Ns;s1++){
-                vv()(s1)() = cc()()(0,1) * freequark()(s1)(2)
-                            - cc()()(1,0) * freequark()(s1)(2)
-                            + cc()()(1,2) * freequark()(s1)(0)
-                            - cc()()(2,1) * freequark()(s1)(0)
-                            + cc()()(2,0) * freequark()(s1)(1)
-                            - cc()()(0,2) * freequark()(s1)(1);
-            }
+                      for(int s1=0;s1<Ns;s1++){
+                          vv()(s1)() = cc()()(0,1) * freequark()(s1)(2)
+                                     - cc()()(1,0) * freequark()(s1)(2)
+                                     + cc()()(1,2) * freequark()(s1)(0)
+                                     - cc()()(2,1) * freequark()(s1)(0)
+                                     + cc()()(2,0) * freequark()(s1)(1)
+                                     - cc()()(0,2) * freequark()(s1)(1);
+                      }
             
-        
-        // After getting the sitewise product do the mom phase loop
-        int base = Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*r;
-        for ( int m=0;m<Nmom;m++){
-          int idx = m+base;
-          auto phase = mom[m]._odata[ss];
-          mac(&lvSum[idx],&vv,&phase);
-        }
-    }
+                      // After getting the sitewise product do the mom phase loop
+                      int base = Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*r;
+                      for ( int m=0;m<Nmom;m++){
+                          int idx = m+base;
+                          auto phase = mom[m]._odata[ss];
+                          mac(&lvSum[idx],&vv,&phase);
+                      }
+                  }
+              }
+          }
       }
     }
-      }
-    }
-  }
-
-
+  });
 
   //
   // MCA - Need to update this segment as well
@@ -2053,74 +2051,72 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
     std::vector<SpinVector_s> extracted(Nsimd);
 
     for(int i=0;i<Lblock;i++){
-    for(int j=0;j<Rblock;j++){
-    for(int k=0;k<Q3block;k++){
-    // MCA - added k loop here
-    for(int m=0;m<Nmom;m++){
+        for(int j=0;j<Rblock;j++){
+            for(int k=0;k<Q3block;k++){
+                // MCA - added k loop here
+                for(int m=0;m<Nmom;m++){
+                    
+                    int ijk_rdx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*rt;
 
-      int ijk_rdx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*rt;
+                    extract(lvSum[ijk_rdx],extracted);
 
-      extract(lvSum[ijk_rdx],extracted);
+                    for(int idx=0;idx<Nsimd;idx++){
 
-      for(int idx=0;idx<Nsimd;idx++){
+                        grid->iCoorFromIindex(icoor,idx);
 
-    grid->iCoorFromIindex(icoor,idx);
+                        int ldx    = rt+icoor[orthogdim]*rd;
 
-    int ldx    = rt+icoor[orthogdim]*rd;
+                        int ijk_ldx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*ldx;
 
-    int ijk_ldx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*ldx;
-
-    lsSum[ijk_ldx]=lsSum[ijk_ldx]+extracted[idx];
-
-      }
-    }}}}
-  }
+                        lsSum[ijk_ldx]=lsSum[ijk_ldx]+extracted[idx];
+                    }
+                }
+            }
+        }
+    }
+  });
+    
   if (t_kernel) *t_kernel += usecond();
   assert(mat.dimension(0) == Nmom);
   assert(mat.dimension(1) == Ns);
   assert(mat.dimension(2) == Nt);
 
-
-
   // ld loop and local only??
   int pd = grid->_processors[orthogdim];
   int pc = grid->_processor_coor[orthogdim];
-  parallel_for_nest2(int lt=0;lt<ld;lt++)
-    {
+  parallel_for_nest2(int lt=0;lt<ld;lt++){
     for(int pt=0;pt<pd;pt++){
       int t = lt + pt*ld;
       if (pt == pc){
-    for(int i=0;i<Lblock;i++){
-      for(int j=0;j<Rblock;j++){
-          for(int k=0;k<Q3block;k++){
-        for(int m=0;m<Nmom;m++){
-          int ijk_dx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*lt;
-          for(int mu=0;mu<Ns;mu++){
-        // this is a bit slow
-        mat(m,mu,t,i,j,k) = lsSum[ijk_dx]()(mu)();
+          for(int i=0;i<Lblock;i++){
+              for(int j=0;j<Rblock;j++){
+                  for(int k=0;k<Q3block;k++){
+                      for(int m=0;m<Nmom;m++){
+                          int ijk_dx = m + Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*lt;
+                          for(int mu=0;mu<Ns;mu++){
+                              // this is a bit slow
+                              mat(m,mu,t,i,j,k) = lsSum[ijk_dx]()(mu)();
+                          }
+                      }
+                  }
+              }
           }
-      }
-        }
-      }
-    }
       } else {
-    const scalar_type zz(0.0);
-    for(int i=0;i<Lblock;i++){
-      for(int j=0;j<Rblock;j++){
-          for(int k=0;k<Q3block;k++){
-        for(int mu=0;mu<Ns;mu++){
-          for(int m=0;m<Nmom;m++){
-        mat(m,mu,t,i,j,k) =zz;
+          const scalar_type zz(0.0);
+          for(int i=0;i<Lblock;i++){
+              for(int j=0;j<Rblock;j++){
+                  for(int k=0;k<Q3block;k++){
+                      for(int mu=0;mu<Ns;mu++){
+                          for(int m=0;m<Nmom;m++){
+                              mat(m,mu,t,i,j,k) =zz;
+                          }
+                      }
+                  }
+              }
           }
-        }
-      }
-    }
-    }
       }
     }
   }
-
-
 
   ////////////////////////////////////////////////////////////////////
   // This global sum is taking as much as 50% of time on 16 nodes
@@ -2130,8 +2126,6 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   if (t_gsum) *t_gsum = -usecond();
   grid->GlobalSumVector(&mat(0,0,0,0,0,0),Nmom*Ns*Nt*Lblock*Rblock*Q3block);
   if (t_gsum) *t_gsum += usecond();
-
-    
 
 }
 
