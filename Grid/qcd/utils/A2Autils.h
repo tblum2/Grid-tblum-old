@@ -1967,7 +1967,7 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   Vector<SpinVector_v > lvSum(MFrvol);
   //parallel_for (int r = 0; r < MFrvol; r++){
   thread_for(r, MFrvol,{
-    lvSum[r] = zero;
+    lvSum[r] = Zero;
   });
 
   Vector<SpinVector_s > lsSum(MFlvol);
@@ -2047,8 +2047,10 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   // Sum across simd lanes in the plane, breaking out orthog dir.
   //parallel_for(int rt=0;rt<rd;rt++){
   thread_for(rt, rd,{
-    std::vector<int> icoor(Nd);
-    std::vector<SpinVector_s> extracted(Nsimd);
+    Coordinate icoor(Nd);
+    //std::vector<int> icoor(Nd);
+    ExtractBuffer<SpinVector_s> extracted(Nsimd);
+    //std::vector<SpinVector_s> extracted(Nsimd);
 
     for(int i=0;i<Lblock;i++){
         for(int j=0;j<Rblock;j++){
@@ -2084,7 +2086,8 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   // ld loop and local only??
   int pd = grid->_processors[orthogdim];
   int pc = grid->_processor_coor[orthogdim];
-  parallel_for_nest2(int lt=0;lt<ld;lt++){
+  //parallel_for_nest2(int lt=0;lt<ld;lt++){
+  thread_for_collapse(2,lt,ld,{
     for(int pt=0;pt<pd;pt++){
       int t = lt + pt*ld;
       if (pt == pc){
@@ -2116,7 +2119,7 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
           }
       }
     }
-  }
+  });
 
   ////////////////////////////////////////////////////////////////////
   // This global sum is taking as much as 50% of time on 16 nodes
