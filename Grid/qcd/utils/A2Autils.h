@@ -1968,7 +1968,7 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   Vector<SpinVector_v > lvSum(MFrvol);
   //parallel_for (int r = 0; r < MFrvol; r++){
   thread_for(r, MFrvol,{
-    lvSum[r] = Zero;
+    lvSum[r] = Zero();
   });
 
   Vector<SpinVector_s > lsSum(MFlvol);
@@ -2037,7 +2037,7 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
                           int idx = m+base;
                           //auto phase = mom[m]._odata[ss];
                           auto phase = mom[m].View(CpuRead);
-                          mac(&lvSum[idx],&vv,&phase);
+                          mac(&lvSum[idx],&vv,&phase[ss]);
                       }
                   }
               }
