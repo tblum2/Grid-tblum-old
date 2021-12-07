@@ -1942,8 +1942,9 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
   int Rblock = mat.dimension(4);
   int Q3block = mat.dimension(5);
   
-  GridBase *grid = q1[0]._grid;
-
+  //GridBase *grid = q1[0]._grid;
+  GridBase *grid = q1[0].Grid();
+    
   const int    Nd = grid->_ndimension;
   const int Nsimd = grid->Nsimd();
 
@@ -1997,11 +1998,13 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
           for(int i=0;i<Lblock;i++){
 
               //auto left = conjugate(q1[i]._odata[ss]);
-              auto left = q1[i]._odata[ss];
+              //auto left = q1[i]._odata[ss];
+              auto left = q1[i].View(CpuRead);
 
               for(int j=0;j<Rblock;j++){
-                  auto right = q2[j]._odata[ss];
-          
+                  //auto right = q2[j]._odata[ss];
+                  auto right = q2[j].View(CpuRead);
+                  
                   // MCA - do spinless quark pair here, q1*C*G5*q2
                   ColourMatrix_v cc;
                   for(int c1=0;c1<Nc;c1++){
@@ -2015,7 +2018,8 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
 
                   // MCA - colour contract colour matrix with third quark
                   for(int k=0; k<Q3block; k++){
-                      auto freequark = q3[k]._odata[ss];
+                      //auto freequark = q3[k]._odata[ss];
+                      auto freequark = q3[k].View(CpuRead);
                       SpinVector_v vv;
             
                       for(int s1=0;s1<Ns;s1++){
@@ -2031,7 +2035,8 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
                       int base = Nmom*i + Nmom*Lblock*j + Nmom*Lblock*Rblock*k + Nmom*Lblock*Rblock*Q3block*r;
                       for ( int m=0;m<Nmom;m++){
                           int idx = m+base;
-                          auto phase = mom[m]._odata[ss];
+                          //auto phase = mom[m]._odata[ss];
+                          auto phase = mom[m].View(CpuRead);
                           mac(&lvSum[idx],&vv,&phase);
                       }
                   }
