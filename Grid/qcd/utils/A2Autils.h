@@ -1999,11 +1999,13 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
 
               //auto left = conjugate(q1[i]._odata[ss]);
               //auto left = q1[i]._odata[ss];
-              auto left = q1[i].View(CpuRead);
+              auto q1_v = q1[i].View(CpuRead);
+              auto left = q1_v[ss];
 
               for(int j=0;j<Rblock;j++){
                   //auto right = q2[j]._odata[ss];
-                  auto right = q2[j].View(CpuRead);
+                  auto q2_v = q2[j].View(CpuRead);
+                  auto right = q2_v[ss];
                   
                   // MCA - do spinless quark pair here, q1*C*G5*q2
                   ColourMatrix_v cc;
@@ -2019,7 +2021,8 @@ void A2Autils<FImpl>::NucleonField(TensorType &mat,
                   // MCA - colour contract colour matrix with third quark
                   for(int k=0; k<Q3block; k++){
                       //auto freequark = q3[k]._odata[ss];
-                      auto freequark = q3[k].View(CpuRead);
+                      auto q3_v = q3[k].View(CpuRead);
+                      auto freequark = q3_v[ss];
                       SpinVector_v vv;
             
                       for(int s1=0;s1<Ns;s1++){
