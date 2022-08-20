@@ -103,6 +103,7 @@ public:
   ////////////////////////////////////////////////////////////////////////////////
   static int  RankWorld(void) ;
   static void BroadcastWorld(int root,void* data, int bytes);
+  static void BroadcastWorld(int root,void* data, uint64_t bytes);
   
   ////////////////////////////////////////////////////////////
   // Reduction
@@ -165,6 +166,7 @@ public:
   // Broadcast a buffer and composite larger
   ////////////////////////////////////////////////////////////
   void Broadcast(int root,void* data, int bytes);
+  void Broadcast(int root,void* data, uint64_t bytes);
 
   ////////////////////////////////////////////////////////////
   // All2All down one dimension

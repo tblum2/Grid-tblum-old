@@ -82,6 +82,41 @@ public:
       chi = chi + coeff*psi;
     }
   }
-};
 
+////////////////////////////////////////////////////////////////////////////////////
+// Following convention
+// (Phi q) = (1 / (1 + 2*dims*eps)) * (q + eps * sum(U * q))
+//
+// where Phi is the smearing operator and eps = width
+//
+// Mathematically this function should return the same value as the above function
+// when the conversion width = sqrt( 4*N*eps / (1 + 2*dims*eps) ) is used.
+//
+/////////////////////////////////////////////////////////////////////////////
+  template<typename T>
+  static void GaussianSmearAlt(const std::vector<LatticeColourMatrix>& U, 
+    			       T& chi, 
+			       const Real& width, int Iterations, int orthog)
+  {
+    GridBase *grid = chi.Grid();
+    T psi(grid);
+
+    int dims = Nd;
+    if( orthog < Nd ) dims=Nd-1;
+
+    Real coeff = 1 / (1 + 2 * dims * width);
+
+    for(int n = 0; n < Iterations; ++n) {
+      psi = chi;
+      for(int mu=0;mu<Nd;mu++) {
+	if ( mu != orthog ) { 
+	  psi = psi + width * Gimpl::CovShiftForward(U[mu],mu,chi);    
+	  psi = psi + width * Gimpl::CovShiftBackward(U[mu],mu,chi);    
+	}
+      }
+      chi = coeff * chi;
+    }
+  }
+
+};
 NAMESPACE_END(Grid);
