@@ -1574,7 +1574,7 @@ void A2Autils<FImpl>::StagMesonField(TensorType &mat,
     Lattice<iScalar<vInteger> > lin_t(grid); lin_t=x+y+z;
     Lattice<iScalar<vInteger> > lin_5(grid); lin_5=x+y+z+t;
 
-    std::vector<ComplexField> stagphase(Ngamma);
+    std::vector<ComplexField> stagphase(Ngamma,grid);
     // compute and store staggered phases
     for (int mu = 0; mu < Ngamma; mu++) {
         
