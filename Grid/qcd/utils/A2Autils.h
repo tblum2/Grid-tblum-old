@@ -1619,7 +1619,7 @@ void A2Autils<FImpl>::StagMesonField(TensorType &mat,
                         int base = Ngamma*Nmom*(i+Lblock*j+Lblock*Rblock*r);
                         for ( int m=0;m<Nmom;m++){
                             auto mom_v = mom[m].View(CpuRead);
-                            for ( int mu=0;m<Ngamma;mu++){
+                            for (int mu=0;mu<Ngamma;mu++){
                                 int idx = mu+Ngamma*m+base;
                                 auto stagphase_v = stagphase[mu].View(CpuRead);
                                 auto phase = mom_v[ss] * stagphase_v[ss];
