@@ -1550,7 +1550,13 @@ void A2Autils<FImpl>::StagMesonField(TensorType &mat,
 
     Vector<Singlet_v> lvSum(MFrvol);
     Vector<Singlet_s> lsSum(MFlvol);
-
+    // Initialize working variables
+    thread_for(r, MFrvol,{
+      lvSum[r] = Zero();
+    });
+    thread_for(r, MFlvol,{
+      lsSum[r]=scalar_type(0.0);
+    });
     int e1=    grid->_slice_nblock[orthogdim];
     int e2=    grid->_slice_block [orthogdim];
     int stride=grid->_slice_stride[orthogdim];
