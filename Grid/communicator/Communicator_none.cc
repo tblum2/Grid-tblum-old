@@ -101,6 +101,7 @@ void CartesianCommunicator::AllToAll(void  *in,void *out,uint64_t words,uint64_t
 int  CartesianCommunicator::RankWorld(void){return 0;}
 void CartesianCommunicator::Barrier(void){}
 void CartesianCommunicator::Broadcast(int root,void* data, int bytes) {}
+void CartesianCommunicator::Broadcast(int root,void* data, uint64_t bytes) {}
 void CartesianCommunicator::BroadcastWorld(int root,void* data, int bytes) { }
 int  CartesianCommunicator::RankFromProcessorCoor(Coordinate &coor) {  return 0;}
 void CartesianCommunicator::ProcessorCoorFromRank(int rank, Coordinate &coor){  coor = _processor_coor; }
