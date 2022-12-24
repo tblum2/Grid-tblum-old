@@ -291,9 +291,9 @@ typedef ImprovedStaggeredFermion5D<StaggeredImplR> ImprovedStaggeredFermion5DR;
 typedef ImprovedStaggeredFermion5D<StaggeredImplF> ImprovedStaggeredFermion5DF;
 typedef ImprovedStaggeredFermion5D<StaggeredImplD> ImprovedStaggeredFermion5DD;
 
-typedef NaiveStaggeredFermion<StaggeredImplR> NaiveStaggeredFermion5DR;
-typedef NaiveStaggeredFermion<StaggeredImplF> NaiveStaggeredFermion5DF;
-typedef NaiveStaggeredFermion<StaggeredImplD> NaiveStaggeredFermion5DD;
+typedef NaiveStaggeredFermion5D<StaggeredImplR> NaiveStaggeredFermion5DR;
+typedef NaiveStaggeredFermion5D<StaggeredImplF> NaiveStaggeredFermion5DF;
+typedef NaiveStaggeredFermion5D<StaggeredImplD> NaiveStaggeredFermion5DD;
 
 NAMESPACE_END(Grid);
 
