@@ -58,6 +58,7 @@ NAMESPACE_CHECK(WilsonClover);
 NAMESPACE_CHECK(Wilson5D);
 
 #include <Grid/qcd/action/fermion/NaiveStaggeredFermion.h>
+#include <Grid/qcd/action/fermion/NaiveStaggeredFermion5D.h>
 #include <Grid/qcd/action/fermion/ImprovedStaggeredFermion.h>
 #include <Grid/qcd/action/fermion/ImprovedStaggeredFermion5D.h>
 NAMESPACE_CHECK(Staggered);

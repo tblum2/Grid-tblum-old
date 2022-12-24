@@ -32,8 +32,8 @@ Author: Peter Boyle <paboyle@ph.ed.ac.uk>
 NAMESPACE_BEGIN(Grid);
   
 // S-direction is INNERMOST and takes no part in the parity.
-const std::vector<int> NaiveStaggeredFermion5DStatic::directions({1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4});
-const std::vector<int> NaiveStaggeredFermion5DStatic::displacements({1, 1, 1, 1, -1, -1, -1, -1, 3, 3, 3, 3, -3, -3, -3, -3});
+const std::vector<int> NaiveStaggeredFermion5DStatic::directions({1,2,3,4,1,2,3,4});
+const std::vector<int> NaiveStaggeredFermion5DStatic::displacements({1, 1, 1, 1, -1, -1, -1, -1});
   
 NAMESPACE_END(Grid);
 
