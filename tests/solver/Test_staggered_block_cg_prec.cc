@@ -46,9 +46,9 @@ struct scal {
 
 int main (int argc, char ** argv)
 {
-  typedef typename ImprovedStaggeredFermion5DR::FermionField FermionField; 
-  typedef typename ImprovedStaggeredFermion5DR::ComplexField ComplexField; 
-  typename ImprovedStaggeredFermion5DR::ImplParams params; 
+  typedef typename NaiveStaggeredFermion5DR::FermionField FermionField; 
+  typedef typename NaiveStaggeredFermion5DR::ComplexField ComplexField; 
+  typename NaiveStaggeredFermion5DR::ImplParams params; 
 
   const int Ls=8;
 
@@ -96,10 +96,9 @@ int main (int argc, char ** argv)
 
   RealD mass=0.003;
   RealD c1=9.0/8.0;
-  RealD c2=-1.0/24.0;
   RealD u0=1.0;
-  ImprovedStaggeredFermion5DR Ds(Umu,Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,c1,c2,u0); 
-  SchurStaggeredOperator<ImprovedStaggeredFermion5DR,FermionField> HermOp(Ds);
+  NaiveStaggeredFermion5DR Ds(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,c1,u0); 
+  SchurStaggeredOperator<NaiveStaggeredFermion5DR,FermionField> HermOp(Ds);
 
   ConjugateGradient<FermionField> CG(1.0e-8,10000);
   int blockDim = 0;
@@ -111,8 +110,8 @@ int main (int argc, char ** argv)
   std::cout << GridLogMessage << "****************************************************************** "<<std::endl;
   std::cout << GridLogMessage << " Calling 4d CG "<<std::endl;
   std::cout << GridLogMessage << "****************************************************************** "<<std::endl;
-  ImprovedStaggeredFermionR Ds4d(Umu,Umu,*UGrid,*UrbGrid,mass,c1,c2,u0);
-  SchurStaggeredOperator<ImprovedStaggeredFermionR,FermionField> HermOp4d(Ds4d);
+  NaiveStaggeredFermionR Ds4d(Umu,*UGrid,*UrbGrid,mass,c1,u0);
+  SchurStaggeredOperator<NaiveStaggeredFermionR,FermionField> HermOp4d(Ds4d);
   FermionField src4d(UGrid); random(pRNG,src4d);
   FermionField src4d_o(UrbGrid);   pickCheckerboard(Odd,src4d_o,src4d);
   FermionField result4d_o(UrbGrid); 

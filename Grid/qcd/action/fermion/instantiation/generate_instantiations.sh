@@ -88,6 +88,7 @@ done
 CC_LIST=" \
   ImprovedStaggeredFermion5DInstantiation \
   ImprovedStaggeredFermionInstantiation \
+  NaiveStaggeredFermion5DInstantiation \
   NaiveStaggeredFermionInstantiation \
   StaggeredKernelsInstantiation "
 
@@ -101,5 +102,6 @@ done
 
 CC_LIST=" \
   ImprovedStaggeredFermion5DInstantiation \
+  NaiveStaggeredFermion5DInstantiation \
   StaggeredKernelsInstantiation "
 
