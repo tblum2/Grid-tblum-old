@@ -97,7 +97,7 @@ int main (int argc, char ** argv)
   RealD mass=0.003;
   RealD c1=9.0/8.0;
   RealD u0=1.0;
-  NaiveStaggeredFermion5DR Ds(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,c1,u0); 
+  NaiveStaggeredFermion5DR Ds(Umu,*FGrid,*FrbGrid,*UGrid,*UrbGrid,mass,c1,u0);
   SchurStaggeredOperator<NaiveStaggeredFermion5DR,FermionField> HermOp(Ds);
 
   ConjugateGradient<FermionField> CG(1.0e-8,10000);

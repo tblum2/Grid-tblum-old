@@ -39,7 +39,7 @@ public:
   // S-direction is INNERMOST and takes no part in the parity.
   static const std::vector<int> directions;
   static const std::vector<int> displacements;
-  const int npoint = 16;
+  const int npoint = 8;
 };
 
 template<class Impl>

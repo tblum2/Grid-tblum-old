@@ -36,12 +36,12 @@ NAMESPACE_BEGIN(Grid);
 
 // 5d lattice
 template<class Impl>
-NaiveStaggeredFermion5D<Impl>::NaiveStaggeredFermion5D(GridCartesian         &FiveDimGrid,
+NaiveStaggeredFermion5D<Impl>::NaiveStaggeredFermion5D(
+                                 GridCartesian         &FiveDimGrid,
 							     GridRedBlackCartesian &FiveDimRedBlackGrid,
 							     GridCartesian         &FourDimGrid,
 							     GridRedBlackCartesian &FourDimRedBlackGrid,
-							     RealD _mass,
-							     RealD _c1, RealD _u0,
+							     RealD _mass, RealD _c1, RealD _u0,
 							     const ImplParams &p) :
   Kernels(p),
   _FiveDimGrid        (&FiveDimGrid),
@@ -114,7 +114,6 @@ NaiveStaggeredFermion5D<Impl>::NaiveStaggeredFermion5D(GridCartesian         &Fi
   int LLs = FiveDimGrid._rdimensions[0];
   int vol4= FourDimGrid.oSites();
   Stencil.BuildSurfaceList(LLs,vol4);
-
   vol4=FourDimRedBlackGrid.oSites();
   StencilEven.BuildSurfaceList(LLs,vol4);
   StencilOdd.BuildSurfaceList(LLs,vol4);
@@ -142,7 +141,7 @@ NaiveStaggeredFermion5D<Impl>::NaiveStaggeredFermion5D(GaugeField &_U,
 }
 
 template <class Impl>
-void NaiveStaggeredFermion<Impl>::ImportGauge(const GaugeField &_U)
+void NaiveStaggeredFermion5D<Impl>::ImportGauge(const GaugeField &_U)
 {
   GaugeLinkField U(GaugeGrid());
   DoubledGaugeField _UUU(GaugeGrid());
@@ -181,13 +180,14 @@ void NaiveStaggeredFermion5D<Impl>::DhopDir(const FermionField &in, FermionField
   autoView( Umu_v   ,   Umu, CpuRead);
   autoView( in_v    ,  in, CpuRead);
   autoView( out_v   , out, CpuWrite);
-  thread_for( ss,Umu.Grid()->oSites(),{
-    for(int s=0;s<Ls;s++){
-      int sU=ss;
-      int sF = s+Ls*sU; 
-      Kernels::DhopDirKernel(Stencil, Umu_v, Stencil.CommBuf(), sF, sU, in_v, out_v, dir, disp);
-    }
-  });
+  //thread_for( ss,Umu.Grid()->oSites(),{
+    //for(int s=0;s<Ls;s++){
+      //int sU=ss;
+      //int sF = s+Ls*sU;
+      //Kernels::DhopDirKernel(Stencil, Umu_v, Stencil.CommBuf(), sF, sU, in_v, out_v, dir, disp);
+    //}
+  //});
+    assert(0);
 };
 
 template<class Impl>
