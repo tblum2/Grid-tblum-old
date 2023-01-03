@@ -513,10 +513,12 @@ class BinaryIO {
               new_layout[1]=1;
               new_layout[2]=1;
               if(grid_layout[3]%nrank==0)
-                  new_layout[3]=nrank;
+                new_layout[3]=nrank;
               else
-                  new_layout[3]=grid_layout[3];
-
+                new_layout[3]=grid_layout[3];
+              while (new_layout[3] > nrank){
+                new_layout[3] /= 2;
+              }
               qlat::ShuffledFieldsWriter sfw(filename, new_layout, true);
               qlat::assign(qlat::get_data(f), qlat::Vector<Complex>((Complex*)iodata.data(),3*iodata.size()));
               qlat::write(sfw,file,f);
