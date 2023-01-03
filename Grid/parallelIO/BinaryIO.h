@@ -512,7 +512,7 @@ class BinaryIO {
               new_layout[0]=1;
               new_layout[1]=1;
               new_layout[2]=1;
-              if(nrank%grid_layout[3]==0)
+              if(grid_layout[3]%nrank==0)
                   new_layout[3]=nrank;
               else
                   new_layout[3]=grid_layout[3];
