@@ -151,19 +151,23 @@ namespace Grid {
       // Prepare RedBlack source
       ////////////////////////////////////////////////
       for(int b=0;b<nblock;b++){
-	RedBlackSource(_Matrix,in[b],tmp,src_o[b]);
+          RedBlackSource(_Matrix,in[b],tmp,src_o[b]);
       }
       ////////////////////////////////////////////////
       // Make the guesses
       ////////////////////////////////////////////////
       if ( subGuess ) guess_save.resize(nblock,grid);
-
+      GridStopWatch GuessTimer;
+      GuessTimer.Start();
       for(int b=0;b<nblock;b++){
         if(useSolnAsInitGuess) {
           pickCheckerboard(Odd, sol_o[b], out[b]);
         } else {
           guess(src_o[b],sol_o[b]); 
         }
+      GuessTimer.Stop();
+      std::cout << GridLogMessage << "Block Guesser time : " << GuessTimer.Elapsed() << std::endl;
+  
 
 	if ( subGuess ) { 
 	  guess_save[b] = sol_o[b];
@@ -223,11 +227,15 @@ namespace Grid {
       ////////////////////////////////
       // Construct the guess
       ////////////////////////////////
+      GridStopWatch GuessTimer;
+      GuessTimer.Start();
       if(useSolnAsInitGuess) {
         pickCheckerboard(Odd, sol_o, out);
       } else {
         guess(src_o,sol_o);
       }
+      GuessTimer.Stop();
+      std::cout << GridLogMessage << "Guesser time : " << GuessTimer.Elapsed() << std::endl;
 
       Field  guess_save(grid);
       guess_save = sol_o;
