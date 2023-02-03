@@ -515,7 +515,7 @@ class BinaryIO {
               if(grid_layout[3]%nrank==0)
                 new_layout[3]=nrank;
               else
-                new_layout[3]=grid_layout[3];
+                new_layout[3]=grid_layout[3]/2;
               while (new_layout[3] > nrank){
                 new_layout[3] /= 2;
               }
