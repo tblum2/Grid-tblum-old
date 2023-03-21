@@ -1,7 +1,5 @@
 #pragma once
-//#include <Grid/Hadrons/Global.hpp>
 #include <Grid/Grid_Eigen_Tensor.h>
-
 NAMESPACE_BEGIN(Grid);
 
 #undef DELTA_F_EQ_2
@@ -128,6 +126,19 @@ static void StagMesonFieldCC(TensorType &mat,
                              const std::vector<ComplexField > &sign,
                              int orthogdim, double *t_kernel = nullptr,
                              double *t_gsum = nullptr);
+// memory saving version
+template <typename TensorType>
+static void StagMesonFieldCCHalfMem(TensorType &mat,
+                                    int mu,
+                                    //LatticeGaugeField &U,
+                                    FermionOperator<FImpl> &Dns,
+                                    const LatticeColourMatrix &Umu,
+                                    const FermionField *evec,
+                                    const Real *eval,
+                                    //const Real mass,
+                                    int orthogdim,
+                                    double *t_kernel= nullptr,
+                                    double *t_gsum = nullptr);
 // MCA - added this for nucleon fields to make WWW and VVV fields
 template <typename TensorType> // output: rank 6 tensor, e.g. Eigen::Tensor<ComplexD, 6>
 static void NucleonField(TensorType &mat,
@@ -2021,6 +2032,184 @@ void A2Autils<FImpl>::StagMesonFieldCC(TensorType &mat,
     ////////////////////////////////////////////////////////////////////
     if (t_gsum) *t_gsum = -usecond();
     grid->GlobalSumVector(&mat(0,0,0,0,0),Nt*Lblock*Rblock);
+    if (t_gsum) *t_gsum += usecond();
+}
+
+// memory saving version with n_e or n_o parts of evecs
+template <class FImpl>
+template <typename TensorType>
+void A2Autils<FImpl>::StagMesonFieldCCHalfMem(TensorType &mat,
+                                              int mu,
+                                              //LatticeGaugeField &U,
+                                              FermionOperator<FImpl> &Dns,
+                                              const LatticeColourMatrix &Umu,
+                                              const FermionField *evec,
+                                              const Real *eval,//imaginary part of lambda
+                                              //const Real mass,
+                                              int orthogdim,
+                                              double *t_kernel,
+                                              double *t_gsum)
+{
+
+    typedef typename FImpl::SiteSpinor vobj;
+
+    typedef typename vobj::scalar_object sobj;
+    typedef typename vobj::scalar_type scalar_type;
+    typedef typename vobj::vector_type vector_type;
+
+    typedef iSinglet<vector_type> Singlet_v;
+    typedef iSinglet<scalar_type> Singlet_s;
+
+    int Lblock = mat.dimension(3);
+    int Rblock = mat.dimension(4);
+
+    // red-black cb grid
+    GridBase *rbgrid = Dns.RedBlackGrid();
+    // full grid
+    GridBase *grid = evec[0].Grid();
+    
+    const int Nd = rbgrid->_ndimension;
+    const int Nsimd = rbgrid->Nsimd();
+
+    int Nt = grid->GlobalDimensions()[orthogdim]; // global time size
+    
+    // RB checkerboard time sizes
+    int fd=rbgrid->_fdimensions[orthogdim]; // full (node?) size in time dir
+    int ld=rbgrid->_ldimensions[orthogdim]; // local size in time dir
+    int rd=rbgrid->_rdimensions[orthogdim]; // reduced size in time dir
+
+    // will locally sum vectors first
+    // sum across these down to scalars
+    // splitting the SIMD
+    int MFrvol = rd*Lblock*Rblock;
+    int MFlvol = ld*Lblock*Rblock;
+
+    Vector<Singlet_v > lvSum(MFrvol);
+    Vector<Singlet_s > lsSum(MFlvol);
+
+    int e1=    rbgrid->_slice_nblock[orthogdim];
+    int e2=    rbgrid->_slice_block [orthogdim];
+    int stride=rbgrid->_slice_stride[orthogdim];
+
+    // potentially wasting cores here if local time extent too small
+    if (t_kernel) *t_kernel = -usecond();
+
+    // Initialize working variables
+    thread_for(r, MFrvol,{
+        lvSum[r] = Zero();
+    });
+    thread_for(r, MFlvol,{
+        lsSum[r]=scalar_type(0.0);
+    });
+    
+    
+    FermionField temp(rbgrid);
+    int cb=evec[0].Checkerboard();
+    std::cout<<GridLogMessage<<" Meson Field checkerboard " << cb << std::endl;
+    LatticeColourMatrix Umu_oe(rbgrid); // even or odd site links
+    pickCheckerboard(cb,Umu_oe,Umu);
+    
+    for(int j=0;j<Rblock;j++){
+
+        // make even sites evec from odd
+        Dns.Meooe(evec[j],temp);
+        temp = Umu_oe*Cshift(temp, mu, 1);
+        temp = timesMinusI(temp);
+        Real einv=1/eval[j];
+        temp = einv*temp;
+        auto vjplU_v = temp.View(CpuRead);
+        thread_for(r, rd,{
+
+            int so=r*rbgrid->_ostride[orthogdim]; // base offset for start of plane
+
+            for(int n=0;n<e1;n++){
+                for(int b=0;b<e2;b++){
+
+                    int ss= so+n*stride+b;
+                    for(int i=0;i<Lblock;i++){
+
+                        auto wi_v  = evec[i].View(CpuRead);
+                        auto left = conjugate(wi_v[ss]);
+                        auto right = vjplU_v[ss];
+
+                        Singlet_v vv;
+                        vv()()() =
+                          left()()(0) * right()()(0)
+                        + left()()(1) * right()()(1)
+                        + left()()(2) * right()()(2);
+
+                        int base = i+Lblock*j+Lblock*Rblock*r;
+                        lvSum[base]+=vv;
+                    }
+                }
+            }
+        });
+    }
+    
+    // Sum across simd lanes in the plane, breaking out orthog dir.
+    thread_for(rt, rd,{
+        Coordinate icoor(Nd);
+        ExtractBuffer<Singlet_s> extracted(Nsimd);
+
+        for(int i=0;i<Lblock;i++){
+            for(int j=0;j<Rblock;j++){
+
+                int ij_rdx = i+Lblock*j+Lblock*Rblock*rt;
+
+                extract(lvSum[ij_rdx],extracted);
+
+                for(int idx=0;idx<Nsimd;idx++){
+
+                    rbgrid->iCoorFromIindex(icoor,idx);
+
+                    int ldx    = rt+icoor[orthogdim]*rd;
+
+                    int ij_ldx = i+Lblock*j+Lblock*Rblock*ldx;
+
+                    lsSum[ij_ldx]=lsSum[ij_ldx]+extracted[idx];
+                }
+            }
+        }
+    });
+
+    if (t_kernel) *t_kernel += usecond();
+    assert(mat.dimension(0) == 1);//mom?
+    assert(mat.dimension(1) == 1);// gamma
+    assert(mat.dimension(2) == Nt);
+
+    // ld loop and local only??
+    int pd = rbgrid->_processors[orthogdim];
+    int pc = rbgrid->_processor_coor[orthogdim];
+    thread_for_collapse(2,lt,ld,{
+
+        for(int pt=0;pt<pd;pt++){// loop over procs in t dir
+            int t = lt + pt*ld; // global time = t+ (node index in time dir)*(size in time dir)
+            if (pt == pc){ // t node index == proc time coord
+                for(int i=0;i<Lblock;i++){
+                    for(int j=0;j<Rblock;j++){
+                        int ij_dx = i + Lblock*j + Lblock*Rblock*lt;
+                        mat(0,0,t,i,j) = lsSum[ij_dx];
+                    }
+                }
+            } else {
+                const scalar_type zz(0.0);
+                for(int i=0;i<Lblock;i++){
+                    for(int j=0;j<Rblock;j++){
+
+                        mat(0,0,t,i,j) =zz;
+                    }
+                }
+            }
+        }
+    });
+    
+    ////////////////////////////////////////////////////////////////////
+    // This global sum is taking as much as 50% of time on 16 nodes
+    // Vector size is 7 x 16 x 32 x 16 x 16 x sizeof(complex) = 2MB - 60MB depending on volume
+    // Healthy size that should suffice
+    ////////////////////////////////////////////////////////////////////
+    if (t_gsum) *t_gsum = -usecond();
+    rbgrid->GlobalSumVector(&mat(0,0,0,0,0),Nt*Lblock*Rblock);
     if (t_gsum) *t_gsum += usecond();
 }
 

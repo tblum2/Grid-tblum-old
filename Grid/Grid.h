@@ -41,6 +41,8 @@ Author: paboyle <paboyle@ph.ed.ac.uk>
 #include <Grid/GridCore.h>
 #include <Grid/GridQCDcore.h>
 #include <Grid/qcd/action/Action.h>
+// A2Autils moved out of QCDcore since I need actions defined first.
+#include <Grid/qcd/utils/A2Autils.h>
 #include <Grid/qcd/utils/GaugeFix.h>
 #include <Grid/qcd/utils/CovariantSmearing.h>
 #include <Grid/qcd/smearing/Smearing.h>
