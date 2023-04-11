@@ -2105,7 +2105,6 @@ void A2Autils<FImpl>::StagMesonFieldCCHalfMem(TensorType &mat,
     
     FermionField temp(rbgrid);
     int cb=evec[0].Checkerboard();
-    std::cout<<GridLogMessage<<" Meson Field checkerboard " << cb << std::endl;
     LatticeColourMatrix Umu_oe(rbgrid); // even or odd site links
     pickCheckerboard(cb,Umu_oe,Umu);
     
