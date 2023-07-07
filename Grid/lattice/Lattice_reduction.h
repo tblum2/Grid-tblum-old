@@ -638,8 +638,9 @@ static void sliceMaddMatrix (Lattice<vobj> &R,Eigen::MatrixXcd &aa,const Lattice
   autoView( R_v, R, CpuWrite);
   thread_region
   {
-    Vector<vobj> s_x(Nblock);
-
+    //Vector<vobj> s_x(Nblock);
+    std::vector<vobj> s_x(Nblock);
+      
     thread_for_collapse_in_region(2, n,nblock, {
      for(int b=0;b<block;b++){
       int o  = n*stride + b;

@@ -155,7 +155,7 @@ void BlockCGrQsolve(LinearOperatorBase<Field> &Linop, const Field &B, Field &X)
   int Orthog = blockDim; // First dimension is block dim; this is an assumption
   Nblock = B.Grid()->_fdimensions[Orthog];
 /* FAKE */
-  Nblock=8;
+  //Nblock=8;
   std::cout<<GridLogMessage<<" Block Conjugate Gradient : Orthog "<<Orthog<<" Nblock "<<Nblock<<std::endl;
 
   X.Checkerboard() = B.Checkerboard();
