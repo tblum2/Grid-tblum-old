@@ -133,8 +133,9 @@ static void StagMesonFieldCCHalfMem(TensorType &mat,
                                     //LatticeGaugeField &U,
                                     FermionOperator<FImpl> &Dns,
                                     const LatticeColourMatrix &Umu,
-                                    const FermionField *evec,
-                                    const Real *eval,
+                                    const FermionField *l_evec,
+                                    const FermionField *r_evec,
+                                    const Real *r_eval,
                                     //const Real mass,
                                     int orthogdim,
                                     double *t_kernel= nullptr,
@@ -2043,8 +2044,9 @@ void A2Autils<FImpl>::StagMesonFieldCCHalfMem(TensorType &mat,
                                               //LatticeGaugeField &U,
                                               FermionOperator<FImpl> &Dns,
                                               const LatticeColourMatrix &Umu,
-                                              const FermionField *evec,
-                                              const Real *eval,//imaginary part of lambda
+                                              const FermionField *l_evec,
+                                              const FermionField *r_evec,
+                                              const Real *r_eval,//imaginary part of lambda
                                               //const Real mass,
                                               int orthogdim,
                                               double *t_kernel,
@@ -2066,7 +2068,7 @@ void A2Autils<FImpl>::StagMesonFieldCCHalfMem(TensorType &mat,
     // red-black cb grid
     GridBase *rbgrid = Dns.RedBlackGrid();
     // full grid
-    GridBase *grid = evec[0].Grid();
+    GridBase *grid = l_evec[0].Grid();
     
     const int Nd = rbgrid->_ndimension;
     const int Nsimd = rbgrid->Nsimd();
@@ -2104,17 +2106,17 @@ void A2Autils<FImpl>::StagMesonFieldCCHalfMem(TensorType &mat,
     
     
     FermionField temp(rbgrid);
-    int cb=evec[0].Checkerboard();
+    int cb=r_evec[0].Checkerboard();
     LatticeColourMatrix Umu_oe(rbgrid); // even or odd site links
     pickCheckerboard(cb,Umu_oe,Umu);
     
     for(int j=0;j<Rblock;j++){
 
-        // make even sites evec from odd
-        Dns.Meooe(evec[j],temp);
+        // make even(odd) sites evec from odd(even)
+        Dns.Meooe(r_evec[j],temp);
         temp = Umu_oe*Cshift(temp, mu, 1);
         temp = timesMinusI(temp);
-        Real einv=1/eval[j];
+        Real einv=1/r_eval[j];
         temp = einv*temp;
         auto vjplU_v = temp.View(CpuRead);
         thread_for(r, rd,{
@@ -2127,7 +2129,7 @@ void A2Autils<FImpl>::StagMesonFieldCCHalfMem(TensorType &mat,
                     int ss= so+n*stride+b;
                     for(int i=0;i<Lblock;i++){
 
-                        auto wi_v  = evec[i].View(CpuRead);
+                        auto wi_v  = l_evec[i].View(CpuRead);
                         auto left = conjugate(wi_v[ss]);
                         auto right = vjplU_v[ss];
 
